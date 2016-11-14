@@ -1,5 +1,10 @@
 clusters <- function(x){
   if (!is.matrix(x)) x <- as.matrix(x)
+  
+  cols <- caret::nzv(x)
+  if (length(cols) > 0)
+    x <- x[, -cols, drop = FALSE]
+  x <- x[complete.cases(x), , drop = FALSE]
   x <- scale(x)  # Center and scale the attributes
   
   num_examples <- nrow(x)
@@ -23,7 +28,7 @@ clusters <- function(x){
                 function(i) sum(kmeans(som_model[["codes"]], 
                                        centers = i)[["withinss"]]), 
                 numeric(1))
-  num_clusters <- which.min(abs(wss - (0.25 * wss[1] + 0.75 * wss[15])))
+  num_clusters <- which.min(abs(wss - (0.5 * wss[1] + 0.5 * wss[15])))
   # cutree(hclust(dist(som_model$codes)), num_clusters)
   kmeans_model <- kmeans(x, centers = num_clusters, iter.max = 100, nstart = 10)
   unname(kmeans_model[["cluster"]])
