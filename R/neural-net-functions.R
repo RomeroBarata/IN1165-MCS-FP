@@ -7,6 +7,12 @@ neuralNet <- function(data){
   train_scale  <- attr(x, "scaled:scale")
   x <- as.data.frame(x)
   
+  if (any(train_scale == 0)){
+    idx <- which(train_scale == 0)
+    x[, idx] <- 0
+    train_scale[idx] <- 1
+  }
+  
   train_median_values <- vapply(x, median, numeric(1), na.rm = TRUE)
   if (anyNA(x) || anyInf(x)) x[] <- substituteNA(x, train_median_values)
   
