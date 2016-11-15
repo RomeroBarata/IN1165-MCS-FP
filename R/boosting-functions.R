@@ -1,4 +1,5 @@
 adaboostM1 <- function(data, L = 10){
+  x <- subset(data, select = -Class)
   y <- data[["Class"]]
   w <- rep(1 / nrow(data), nrow(data))
   
@@ -10,7 +11,7 @@ adaboostM1 <- function(data, L = 10){
     training <- data[in_train, , drop = FALSE]
     
     model <- neuralNet(training)
-    preds <- predict(model, subset(data, select = -Class), type = "class")
+    preds <- predict(model, x, type = "class")
     
     l <- preds != y
     error <- sum(w * l)
@@ -21,7 +22,7 @@ adaboostM1 <- function(data, L = 10){
     }
     
     betas[k] <- error / (1 - error)
-    w <- (w * (betas[k]) ^ (1 - l)) / sum(w * (betas[k]) ^ (1 - l))
+    w <- (w * ((betas[k]) ^ (1 - l))) / sum(w * ((betas[k]) ^ (1 - l)))
     classifiers[[k]] <- model
     
     k <- k + 1
