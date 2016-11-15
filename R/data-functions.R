@@ -1,3 +1,24 @@
+readDataSets <- function(path, files_names = NULL){
+  if (is.null(files_names)) 
+    files_names <- list.files(file.path(path, ""), pattern = ".csv$")
+  
+  readData <- function(file_name){
+    read.csv(file.path(path, file_name), header = TRUE, strip.white = TRUE)
+  }
+  
+  data_list <- lapply(files_names, readData)
+  names(data_list) <- as.character(strsplit(files_names, split = ".csv"))
+  
+  organizeClasses <- function(data){
+    data$Class <- factor(data$Class, levels = c(1, -1))
+    data
+  }
+  
+  data_list <- lapply(data_list, organizeClasses)
+  
+  data_list
+}
+
 pcaCoordinates <- function(x){
   nc <- ncol(x)
   x <- prcomp(x)[["x"]]
@@ -37,13 +58,16 @@ identifyBoundary <- function(data_maj, data_min,
 synthesiseBoundary <- function(x_maj, x_min, 
                                bnd_maj, bnd_min, 
                                bootstrap_reps = 10){
+  original_bnd_maj <- bnd_maj
+  original_bnd_min <- bnd_min
+  
   idx_maj <- vapply(bnd_maj, function(x) length(x) > 5, logical(1))
   bnd_maj <- bnd_maj[idx_maj]
   idx_min <- vapply(bnd_min, function(x) length(x) > 5, logical(1))
   bnd_min <- bnd_min[idx_min]
   
   f <- function(x, idx){
-    vapply(x[idx, ], sd, numeric(1))
+    vapply(x[idx, ], sd, numeric(1), na.rm = TRUE)
   }
   sds_maj <- vapply(bnd_maj, f, numeric(ncol(x_maj)), x = x_maj)
   sds_min <- vapply(bnd_min, f, numeric(ncol(x_min)), x = x_min)
@@ -78,8 +102,20 @@ synthesiseBoundary <- function(x_maj, x_min,
   x_min_synth <- lapply(seq_along(bnd_min), h, 
                         x = x_min, bnd = bnd_min, offset = offset_min)
   
-  x_maj_synth <- rbindList(x_maj_synth)
-  x_min_synth <- rbindList(x_min_synth)
+  x_maj_synth <- do.call(rbind, x_maj_synth)
+  x_min_synth <- do.call(rbind, x_min_synth)
+  
+  if (is.null(x_maj_synth)){
+    x_maj_synth <- lapply(original_bnd_maj, 
+                          function(idx) x_maj[idx, , drop = FALSE])
+    x_maj_synth <- do.call(rbind, x_maj_synth)
+  }
+  
+  if (is.null(x_min_synth)){
+    x_min_synth <- lapply(original_bnd_min, 
+                          function(idx) x_min[idx, , drop = FALSE])
+    x_min_synth <- do.call(rbind, x_min_synth)
+  }
   
   list(Majority = x_maj_synth, 
        Minority = x_min_synth)
