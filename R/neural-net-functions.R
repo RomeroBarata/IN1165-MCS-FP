@@ -21,7 +21,8 @@ neuralNet <- function(data){
   model <- nnet(Class ~ ., 
                 data = data, 
                 size = num_hidden, 
-                maxit = 500)
+                maxit = 500, 
+                trace = FALSE)
   
   structure(list(model = model, 
                  train_center = train_center, 
