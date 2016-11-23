@@ -1,0 +1,77 @@
+---
+title: |
+  | Handling imbalanced data sets with synthetic boundary data generation using bootstrap re-sampling and AdaBoost techniques
+  |
+  | IN1165 Multiple Classifier Systems
+author: "Romero Morais"
+date: "November XX, 2016"
+output: 
+  prettydoc::html_pretty: 
+    toc: yes
+    theme: cayman
+    highlight: github
+bibliography: refs.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Abstract
+This document partially reproduces the work of @thanathamathee2013handling, where a technique to deal with the problem of learning from imbalanced data sets was proposed. The technique consists of a boosted neural network trained with synthetic examples. These examples were synthesised based on the standard deviations of the original examples and of bootstrap samples. The results obtained do not match the results reported in @thanathamathee2013handling, being worse than the results originally reported.
+
+## Introduction
+Learning from imbalanced data sets is deemed as a difficult problem, since most standard classifiers assume classes' distribution to be even.
+
+Solutions to the aforementioned problem include data re-sampling and cost-sensitive classifiers. Re-sampling techniques work at a data-level and consist of either over-sampling the minority class or under-sampling the majority class (hybrid approaches are also common). On the other hand, cost-sensitive classifiers introduce distinct misclassification costs for examples of different classes, biasing the classifier to correctly classify examples from the minority class.
+
+The proposed technique is inspired by two observations: neural networks error minimisation process may try to minimise only the majority class error, and unseen testing data distribution might be predicted using the standard deviation of bootstrap samples of the training data.
+
+The rest of this report is organised as follows. [Proposed Technique](#proposed-technique) describes in detail how the proposed technique works, including the decisions made to fill the gaps in the original explanation. [Experimental Methodology](#experimental-methodology) explains the experimentation process adopted and introduces the metrics utilised to assess the performance of the techniques. [Results](#results) shows the obtained results and compare them to the originally reported results. Finally, [Conclusions](#conclusions) highlights the main messages contained in the original work and how hard it is to reproduce scientific works.
+
+## Proposed Technique
+The proposed technique consists of five steps:
+
+1. Locate the clusters present in each class.
+2. Change the coordinates of each cluster using the PCA algorithm.
+3. Identify boundary examples in each cluster by finding the examples that are closer to the examples from the other class.
+4. Synthesise new (boundary) examples using the standard deviation of bootstrap samples and of the original examples.
+5. Train a boosted a neural network utilising the synthesised examples.
+
+### Locating The Clusters
+A Self-Organising Map (SOM) was employed to automatically detect the clusters in each class, however the authors did not give any details on how this was performed.
+
+Therefore, the clusters were detected according to the following description. Firstly, since normalization is a recommended step before training a SOM, variables with zero and near-zero variance were removed. Next, variables with missing values had their missing values substituted by the variables' median values, and then the data were centered and scaled. The SOM is then trained using a circular neighbourhood with a hexagonal topology, and the number of nodes were chosen according to the number of examples in the data (see the table below).
+
+Data Size | $\le 100$ | $\le 1000$ | $\le 5000$ | $\gt 5000$
+--------- | --------- | ---------- | ---------- | ----------
+Grid | $4 \times 4$ | $8 \times 8$ | $16 \times 16$ | $20 \times 20$
+
+After the training phase, the SOM's code vectors are given as input to a $k$-means algorithm with the number of clusters varying from 1 to 15. For each number of clusters, the Within Sum of Squares ($WSS$) is computed and the final number of clusters is chosen as the one that has the $WSS$ closest to $0.5 \times WSS[1] + 0.5 \times WSS[15]$, where $WSS[n]$ is the $WSS$ value of the $k$-means algorithm with $n$ clusters.
+
+Finally, after determining the number $n$ of clusters, a $k$-means algorithm with the number of clusters set to $n$ is trained with the original data.
+
+### PCA
+After determining the clusters for each class in the data, the authors use a PCA (for each cluster) to change the examples' coordinates to the coordinates of the principal components.
+
+This is a strange step as we are moving each cluster to a different set of coordinates, hence feeding a data set to the neural network where groups of examples are described in different coordinates.
+Indeed, including this step degraded the performance of the classifiers. Therefore, it was excluded from the algorithm.
+
+### Detection of Boundary Examples
+In order to determine which examples are boundary examples, for each class, the nearest neighbour of each cluster from the opposite class is computed and marked as a boundary example.
+
+### Synthesising New Boundary Examples
+
+
+### Learning With a Boosted Neural Network
+In possession of the synthesised examples, a boosted neural network is then trained using the synthesised examples exclusively. The neural network's parameters were set to one hidden layer with _(number of features + number of classes) / 2_ neurons, sigmoid logistic function as the neuron's activation function, 500 epochs for training, and optimisation of the neuron's weights performed by the _BFGS_ method (a quasi-Newton method). This is slightly different from the original report. The difference is that the neuron's weights were updated using the backpropagation algorithm with a learning rate of $0.01$. In regard to the boosting algorithm, the _AdaBoostM1_ algorithm with an ensemble size of $10$ classifiers was adopted.
+
+## Experimental Methodology
+
+### Data Sets
+
+## Results
+
+## Conclusions
+
+## References
