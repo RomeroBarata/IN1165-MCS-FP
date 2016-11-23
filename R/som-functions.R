@@ -4,7 +4,13 @@ clusters <- function(x){
   cols <- caret::nzv(x)
   if (length(cols) > 0)
     x <- x[, -cols, drop = FALSE]
-  x <- x[complete.cases(x), , drop = FALSE]
+  # x <- x[complete.cases(x), , drop = FALSE]
+  if (anyNA(x)){
+    median_values <- apply(x, 2, median, na.rm = TRUE)
+    for (j in 1:ncol(x)){
+      x[is.na(x[, j]), j] <- median_values[j]
+    }
+  }
   x <- scale(x)  # Center and scale the attributes
   
   num_examples <- nrow(x)
