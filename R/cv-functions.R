@@ -44,6 +44,11 @@ train <- function(data,
                   sampling = NULL, sampling_args = list(), 
                   partition, ...){
   folds <- length(unique(partition))
+  col_names <- c("examples", "accuracy", "recall", 
+                 "precision", "f1", "specificity", 
+                 "npv", "f1_neg", "geo_mean")
+  results <- matrix(0, nrow = folds, ncol = length(col_names), 
+                    dimnames = list(NULL, col_names))
   for (i in seq_len(folds)){
     # Split testing set
     testing_idx <- i == partition
@@ -64,5 +69,9 @@ train <- function(data,
     # Make predictions
     preds <- predict(model, testing, type = "class")
     
+    # Compute performance metrics
+    perf <- computeMetrics(preds, y)
+    results[i, ] <- c(examples = nrow(training), perf)
   }
+  results
 }
