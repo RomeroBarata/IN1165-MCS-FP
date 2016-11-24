@@ -41,7 +41,7 @@ The proposed technique consists of five steps:
 ### Locating The Clusters
 A Self-Organising Map (SOM) was employed to automatically detect the clusters in each class, however the authors did not give any details on how this was performed.
 
-Therefore, the clusters were detected according to the following description. Firstly, since normalization is a recommended step before training a SOM, variables with zero and near-zero variance were removed. Next, variables with missing values had their missing values substituted by the variables' median values, and then the data were centered and scaled. The SOM is then trained using a circular neighbourhood with a hexagonal topology, and the number of nodes were chosen according to the number of examples in the data (see the table below).
+Therefore, the clusters were detected according to the following description. Firstly, since normalization is a recommended step before training a SOM, variables with zero and near-zero variance were removed. Next, variables with missing values had their missing values substituted by the variables' median values, and then the data were centered and scaled. Then, the SOM is trained using a circular neighbourhood with a hexagonal topology, and the number of nodes were chosen according to the number of examples in the data (see the table below).
 
 Data Size | $\le 100$ | $\le 1000$ | $\le 5000$ | $\gt 5000$
 --------- | --------- | ---------- | ---------- | ----------
@@ -67,8 +67,42 @@ In order to determine which examples are boundary examples, for each class, the 
 In possession of the synthesised examples, a boosted neural network is then trained using the synthesised examples exclusively. The neural network's parameters were set to one hidden layer with _(number of features + number of classes) / 2_ neurons, sigmoid logistic function as the neuron's activation function, 500 epochs for training, and optimisation of the neuron's weights performed by the _BFGS_ method (a quasi-Newton method). This is slightly different from the original report. The difference is that the neuron's weights were updated using the backpropagation algorithm with a learning rate of $0.01$. In regard to the boosting algorithm, the _AdaBoostM1_ algorithm with an ensemble size of $10$ classifiers was adopted.
 
 ## Experimental Methodology
+To measure the performance of the proposed method, a stratified ten-fold cross-validation procedure repeated five times was conducted, and the results averaged over the fifty measures. The proposed method was compared to a single neural network and to the _AdaBoostM1_ without data re-sampling.
+
+The rest of this section describes the data sets and the assessment metrics used in the experiments.
 
 ### Data Sets
+Ten data sets were employed in the experiments. The following table summarises them:
+
+Name | #Min. Examples | #Maj. Examples | Min./Maj. Class
+---- | -------------- | -------------- | ---------------
+Monk 2 Train | $64$ | $105$ | 
+Ionosphere | $126$ | $225$ | 
+Breast Cancer Wisconsin | $241$ | $458$ | 
+Vehicle | $199$ | $647$ | van / all the rest
+Hepatitis | $32$ | $123$ | 
+Glass | $29$ | $185$ | headlamps / all the rest
+Vowel Recognition | $90$ | $900$ | hid / all the rest
+Abalone | $42$ | $689$ | 18 / 9
+Yeast | $20$ | $463$ | POX / CYT
+Car Evaluation | $65$ | $1663$ | v-good / all the rest
+
+For the multi-class data sets, the last column shows which classes were selected as the minority and the majority classes.
+
+Since the Abalone and the Car Evaluation data sets had nominal features, and the authors did not report how they were pre-processed before training, these two data sets were removed from the experiments.
+
+### Metrics
+To assess the performance of the trained classifiers, the following metrics were employed:
+$$Accuracy = \frac{TP + TN}{TP + FP + FN + TN}$$
+$$Recall = \frac{TP}{TP + FN}$$
+$$Precision = \frac{TP}{TP + FP}$$
+$$F_1 = \frac{2 \times Recall \times Precision}{Recall + Precision}$$
+$$Specificity = \frac{TN}{FP + TN}$$
+$$NPV = \frac{TN}{FN + TN}$$
+$$Negative\ F_1 = \frac{2 \times Specificity \times NPV}{Specificity + NPV}$$
+$$Geometric\ Mean = \sqrt{Recall \times Precision}$$
+
+The only metric that was not included here, but present in the original work, was the _AUC_.
 
 ## Results
 
