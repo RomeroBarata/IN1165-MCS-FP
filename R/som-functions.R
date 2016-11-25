@@ -4,7 +4,6 @@ clusters <- function(x){
   cols <- caret::nzv(x)
   if (length(cols) > 0)
     x <- x[, -cols, drop = FALSE]
-  # x <- x[complete.cases(x), , drop = FALSE]
   if (anyNA(x)){
     median_values <- apply(x, 2, median, na.rm = TRUE)
     for (j in 1:ncol(x)){
@@ -35,7 +34,6 @@ clusters <- function(x){
                                        centers = i)[["withinss"]]), 
                 numeric(1))
   num_clusters <- which.min(abs(wss - (0.5 * wss[1] + 0.5 * wss[15])))
-  # cutree(hclust(dist(som_model$codes)), num_clusters)
   kmeans_model <- kmeans(x, centers = num_clusters, iter.max = 100, nstart = 10)
   unname(kmeans_model[["cluster"]])
 }
