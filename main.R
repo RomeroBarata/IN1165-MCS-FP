@@ -1,3 +1,6 @@
+# In case of any error, uncomment and run the line below
+# install.packages(c("kohonen", "kknn", "caret"), dependencies = TRUE)
+
 ## Import the necessary packages -----------------------------------------------
 library(kohonen)  # Self-Organising Maps
 library(kknn)     # kNN
@@ -20,8 +23,9 @@ source(file.path(R_PATH, "util-functions.R"))
 ## Import data sets ------------------------------------------------------------
 data_list <- readDataSets(DATA_PATH)
 
-## Experiments
+## Experiments -----------------------------------------------------------------
 source("params.R")
+# Neural Networks
 nn_results <- Map(cvTrain, 
                   data = data_list, 
                   method = "neuralNet", 
@@ -32,6 +36,7 @@ nn_results <- Map(cvTrain,
 nn_results <- lapply(nn_results, do.call, what = rbind)
 nn_results <- lapply(nn_results, colMeans)
 
+# AdaBoostM1
 adaboost_results <- Map(cvTrain, 
                         data = data_list, 
                         method = "adaboostM1", 
@@ -42,6 +47,7 @@ adaboost_results <- Map(cvTrain,
 adaboost_results <- lapply(adaboost_results, do.call, what = rbind)
 adaboost_results <- lapply(adaboost_results, colMeans)
 
+# Proposed Method
 proposal_results <- Map(cvTrain, 
                         data = data_list, 
                         method = "adaboostM1", 
@@ -53,5 +59,6 @@ proposal_results <- Map(cvTrain,
 proposal_results <- lapply(proposal_results, do.call, what = rbind)
 proposal_results <- lapply(proposal_results, colMeans)
 
+# Assemble the results
 final_results <- Map(rbind, nn_results, adaboost_results, proposal_results)
 lapply(final_results, round, digits = 4)
