@@ -4,7 +4,7 @@ title: |
   |
   | IN1165 Multiple Classifier Systems
 author: "Romero Morais"
-date: "November XX, 2016"
+date: "November 25, 2016"
 output: 
   prettydoc::html_pretty: 
     toc: yes
@@ -18,30 +18,32 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Abstract
-This document partially reproduces the work of @thanathamathee2013handling, where a technique to deal with the problem of learning from imbalanced data sets was proposed. The technique consists of a boosted neural network trained with synthetic examples. These examples were synthesised based on the standard deviations of the original examples and of bootstrap samples. The results obtained do not match the results reported in @thanathamathee2013handling, being worse than the results originally reported.
+This document partially reproduces the work of [@thanathamathee2013handling], where a technique to deal with the problem of learning from imbalanced data sets was proposed. The technique consists of a boosted neural network trained with synthetic examples. These examples were synthesised based on the standard deviations of the original examples and of bootstrap samples. The results obtained do not match the results reported in [@thanathamathee2013handling], being worse than the results originally reported.
 
 ## Introduction
 Learning from imbalanced data sets is deemed as a difficult problem, since most standard classifiers assume classes' distribution to be even.
 
-Solutions to the aforementioned problem include data re-sampling and cost-sensitive classifiers. Re-sampling techniques work at a data-level and consist of either over-sampling the minority class or under-sampling the majority class (hybrid approaches are also common). On the other hand, cost-sensitive classifiers introduce distinct misclassification costs for examples of different classes, biasing the classifier to correctly classify examples from the minority class.
+Solutions to the aforementioned problem include data re-sampling and cost-sensitive classifiers [@he2009learning]. Re-sampling techniques work at a data-level and consist of either over-sampling the minority class or under-sampling the majority class (hybrid approaches are also common). On the other hand, cost-sensitive classifiers introduce distinct misclassification costs for examples of different classes, biasing the classifier to correctly classify examples from the minority class.
 
-The proposed technique is inspired by two observations: neural networks error minimisation process may try to minimise only the majority class error, and unseen testing data distribution might be predicted using the standard deviation of bootstrap samples of the training data.
+The proposed technique is inspired by two observations: neural networks' error minimisation process may try to minimise only the majority class error, and unseen testing data distribution might be simulated using the standard deviation of bootstrap samples of the training data.
 
-The rest of this report is organised as follows. [Proposed Technique](#proposed-technique) describes in detail how the proposed technique works, including the decisions made to fill the gaps in the original explanation. [Experimental Methodology](#experimental-methodology) explains the experimentation process adopted and introduces the metrics utilised to assess the performance of the techniques. [Results](#results) shows the obtained results and compare them to the originally reported results. Finally, [Conclusions](#conclusions) highlights the main messages contained in the original work and how hard it is to reproduce scientific works.
+The rest of this report is organised as follows. [Proposed Technique](#proposed-technique) describes in detail how the proposed technique works, including the decisions made to fill the gaps in the original explanation. [Experimental Methodology](#experimental-methodology) explains the experimentation process adopted and introduces the metrics utilised to assess the performance of the techniques. [Results](#results) shows the obtained results and compare them to the originally reported results. Finally, [Conclusions](#conclusions) draws the final thoughts about the work being reproduced.
 
 ## Proposed Technique
-The proposed technique consists of five steps:
+The proposed technique tries to tackle the two inspirational observations made before by: balancing the distribution of examples of different classes, and training a classifier with training data having a distribution as close as possible to the testing distribution. In order to simulate the testing distribution and generate new examples that belong to it, the authors argue that boundary examples located in clusters inside the data are sufficient to determine the surface that separates the classes. Hence, the proposed technique consists of the following five steps:
 
 1. Locate the clusters present in each class.
 2. Change the coordinates of each cluster using the PCA algorithm.
 3. Identify boundary examples in each cluster by finding the examples that are closer to the examples from the other class.
 4. Synthesise new (boundary) examples using the standard deviation of bootstrap samples and of the original examples.
-5. Train a boosted a neural network utilising the synthesised examples.
+5. Train a boosted a neural network using only the synthesised examples.
+
+The next sections will go into the details of each step and explain the decisions made to fill the gaps in original explanation.
 
 ### Locating The Clusters
 A Self-Organising Map (SOM) was employed to automatically detect the clusters in each class, however the authors did not give any details on how this was performed.
 
-Therefore, the clusters were detected according to the following description. Firstly, since normalization is a recommended step before training a SOM, variables with zero and near-zero variance were removed. Next, variables with missing values had their missing values substituted by the variables' median values, and then the data were centered and scaled. Then, the SOM is trained using a circular neighbourhood with a hexagonal topology, and the number of nodes were chosen according to the number of examples in the data (see the table below).
+Therefore, the clusters were detected according to the following description. Firstly, since normalization is a recommended step before training a SOM, variables with zero and near-zero variance were removed. Next, variables with missing values had their missing values substituted by the variables' median values, and then the data were centered and scaled. Then, the SOM is trained using a circular neighbourhood with a hexagonal topology, and the number of nodes were chosen according to the number of examples in the data (see table below).
 
 Data Size | $\le 100$ | $\le 1000$ | $\le 5000$ | $\gt 5000$
 --------- | --------- | ---------- | ---------- | ----------
@@ -49,25 +51,31 @@ Grid | $4 \times 4$ | $8 \times 8$ | $16 \times 16$ | $20 \times 20$
 
 After the training phase, the SOM's code vectors are given as input to a $k$-means algorithm with the number of clusters varying from 1 to 15. For each number of clusters, the Within Sum of Squares ($WSS$) is computed and the final number of clusters is chosen as the one that has the $WSS$ closest to $0.5 \times WSS[1] + 0.5 \times WSS[15]$, where $WSS[n]$ is the $WSS$ value of the $k$-means algorithm with $n$ clusters.
 
-Finally, after determining the number $n$ of clusters, a $k$-means algorithm with the number of clusters set to $n$ is trained with the original data.
+Finally, after determining the number $n$ of clusters, a $k$-means algorithm with $n$ clusters is trained with the original data.
 
 ### PCA
 After determining the clusters for each class in the data, the authors use a PCA (for each cluster) to change the examples' coordinates to the coordinates of the principal components.
 
 This is a strange step as we are moving each cluster to a different set of coordinates, hence feeding a data set to the neural network where groups of examples are described in different coordinates.
-Indeed, including this step degraded the performance of the classifiers. Therefore, it was excluded from the algorithm.
+Indeed, including this step degraded the performance of the classifiers. Therefore, it was removed from the experiments performed in this report.
 
 ### Detection of Boundary Examples
-In order to determine which examples are boundary examples, for each class, the nearest neighbour of each cluster from the opposite class is computed and marked as a boundary example.
+The following procedure detects the boundary examples of the majority class, however the same procedure finds the boundary examples of the minority class.
+
+For each example in the minority class, compute its nearest neighbour in the i-th cluster in the majority class and mark it as a boundary example. Disconsidering repeated neighbours, the marked examples constitute the boundary examples of the i-th cluster of the majority class. Repeat this procedure for the remaining clusters in the majority class.
 
 ### Synthesising New Boundary Examples
+As in the previous section, the procedure to synthesise new boundary examples is described for the majority class, working similarly for the minority class.
 
+First, set the number $B$ of bootstrap samples that will be taken and compute the standard deviation of each cluster. The standard deviation of a cluster is a vector containing the standard deviation of each variable. Then, for each cluster in the majority class with at least $6$ examples, draw $B$ bootstrap samples and average the standard deviation of the samples. If the average standard deviation of the bootstrap samples is greater than the standard deviation of the cluster in any of the variables, synthesise a new example for each example in the cluster by adding $(\sigma^{boot} + \sigma)$ to each example in the cluster, where $\sigma^{boot}$ and $\sigma$ are the average standard deviation of the bootstrap samples and the standard deviation of the current cluster, respectively.
+
+The value of $B$ used in the experiments was not reported, hence the value $10$ was adopted in this report.
 
 ### Learning With a Boosted Neural Network
-In possession of the synthesised examples, a boosted neural network is then trained using the synthesised examples exclusively. The neural network's parameters were set to one hidden layer with _(number of features + number of classes) / 2_ neurons, sigmoid logistic function as the neuron's activation function, 500 epochs for training, and optimisation of the neuron's weights performed by the _BFGS_ method (a quasi-Newton method). This is slightly different from the original report. The difference is that the neuron's weights were updated using the backpropagation algorithm with a learning rate of $0.01$. In regard to the boosting algorithm, the _AdaBoostM1_ algorithm with an ensemble size of $10$ classifiers was adopted.
+In possession of the synthesised examples, a boosted neural network is then trained using the synthesised examples exclusively. The neural network's parameters were set to one hidden layer with _(number of variables + number of classes) / 2_ neurons, sigmoid logistic function as the neuron's activation function, $500$ epochs for training, and optimisation of the neuron's weights performed by the _BFGS_ method (a quasi-Newton method). This is slightly different from the original work. The difference is that the neuron's weights were updated using the backpropagation algorithm with a learning rate of $0.01$. In regard to the boosting algorithm, the _AdaBoostM1_ algorithm with an ensemble size of $10$ classifiers was adopted.
 
 ## Experimental Methodology
-To measure the performance of the proposed method, a stratified ten-fold cross-validation procedure repeated five times was conducted, and the results averaged over the fifty measures. The proposed method was compared to a single neural network and to the _AdaBoostM1_ without data re-sampling.
+To measure the performance of the proposed method, a stratified ten-fold cross-validation procedure repeated five times was conducted, and the results averaged over the fifty measurements. The proposed method was compared to a single neural network and to the _AdaBoostM1_ without data re-sampling.
 
 The rest of this section describes the data sets and the assessment metrics used in the experiments.
 
@@ -76,7 +84,7 @@ Ten data sets were employed in the experiments. The following table summarises t
 
 Name | #Min. Examples | #Maj. Examples | Min./Maj. Class
 ---- | -------------- | -------------- | ---------------
-Monk 2 Train | $64$ | $105$ | 
+Monk2 Train | $64$ | $105$ | 
 Ionosphere | $126$ | $225$ | 
 Breast Cancer Wisconsin | $241$ | $458$ | 
 Vehicle | $199$ | $647$ | van / all the rest
@@ -105,7 +113,67 @@ $$Geometric\ Mean = \sqrt{Recall \times Precision}$$
 The only metric that was not included here, but present in the original work, was the _AUC_.
 
 ## Results
+The tables below show the results obtained.
+
+Hepatitis | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 139.50 | 0.8210 | 0.5639 | 0.8844 | 0.6938 | 0.6083 | 0.8810
+AdaBoostM1 | 139.50 | **0.8434** | **0.5813** | **0.9015** | **0.7024** | 0.5817 | **0.9173**
+Proposal | 28.94 | 0.6567 | 0.4957 | 0.7271 | 0.6858 | **0.8150** | 0.6186
+
+Ionosphere | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 315.90 | 0.8874 | 0.8271 | 0.9160 | 0.8523 | 0.7658 | 0.9557
+AdaBoostM1 | 315.90 | **0.9145** | **0.8683** | **0.9365** | **0.8843** | **0.8051** | 0.9760
+Proposal | 64.58 | 0.8315 | 0.6960 | 0.8825 | 0.7378 | 0.5698 | **0.9781**
+
+Vehicle | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 761.40 | 0.9716 | 0.9392 | 0.9815 | 0.9594 | 0.9385 | 0.9817
+AdaBoostM1 | 761.40 | **0.9794** | **0.9563** | **0.9865** | **0.9721** | **0.9595** | **0.9855**
+Proposal | 153.58 | 0.9492 | 0.8982 | 0.9661 | 0.9460 | 0.9418 | 0.9515
+
+Monk2 Train | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 152.10 | 0.6419 | 0.5095 | 0.7078 | 0.5764 | 0.5400 | 0.7057
+AdaBoostM1 | 152.10 | **0.6957** | **0.5993** | **0.7512** | **0.6686** | **0.6098** | **0.7516**
+Proposal | 63.30 | 0.5374 | 0.4711 | 0.5638 | 0.5113 | 0.5645 | 0.5177
+
+Vowel | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 891.00 | 0.9949 | 0.9729 | 0.9972 | 0.9879 | 0.9800 | 0.9964
+AdaBoostM1 | 891.00 | **0.9998** | **0.9989** | **0.9999** | **0.9999** | **1.0000** | **0.9998**
+Proposal | 92.08 | 0.7634 | 0.4410 | 0.8417 | 0.7882 | 0.8600 | 0.7538
+
+Glass | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 192.60 | **0.9635** | **0.8643** | **0.9788** | **0.9199** | **0.8767** | 0.9774
+AdaBoostM1 | 192.60 | 0.9624 | 0.8500 | 0.9784 | 0.8981 | 0.8367 | **0.9826**
+Proposal | 101.02 | 0.8919 | 0.7099 | 0.9317 | 0.8717 | 0.8700 | 0.8959
+
+Yeast | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 434.70 | 0.9561 | 0.4555 | 0.9769 | **0.5804** | 0.4800 | 0.9767
+AdaBoostM1 | 434.70 | **0.9739** | **0.5247** | **0.9865** | 0.5721 | 0.4700 | **0.9957**
+Proposal | 38.12 | 0.7681 | 0.1945 | 0.8549 | 0.5479 | **0.5200** | 0.7788
+
+Breast Cancer Wisconsin | # of training examples | Accuracy | $F_1^{min}$ | $F_1^{maj}$ | GMean | Recall | Specificity
+------- | ----------------------- | -------- | --- | -------- | ------ | ------ | -----------
+NN | 629.10 | **0.9580** | **0.9391** | **0.9679** | **0.9542** | **0.9452** | 0.9647
+AdaBoostM1 | 629.10 | 0.9575 | 0.9381 | 0.9675 | 0.9518 | 0.9364 | **0.9686**
+Proposal | 51.44 | 0.9469 | 0.9233 | 0.9593 | 0.9423 | 0.9308 | 0.9555
+
+For all data sets, the average number of training examples in each round of the cross-validation matches the original report for the _NN_ and the _AdaBoostM1_, but is on average four times less for the _Proposal_ reported here.
+
+As opposed to the original results, the _Proposal_ performed the worst while _AdaBoostM1_ performed the best. In a few cases the _Proposal_ achieved a higher _Recall_, and in one case it achieved the highest _Specificity_. Also, the only case where the _NN_ outperformed the _AdaBoostM1_ in most of the metrics was for the Glass data set.
+
+Moreover, the only cases where the original results for the _Proposal_ were close to the results reported here were for the _Vehicle_ and _Breast Cancer Wisconsin_ data sets.
+
+In the original work, a Wilcoxon Signed Rank Test was employed to determine the superiority of the _Proposal_, however it clearly underperformed here and no statistical test was conducted.
 
 ## Conclusions
+The work of [@thanathamathee2013handling] proposes a new technique to deal with the problem of learning from imbalanced data sets. It uses clusterisation and bootstrap sampling to generate synthetic examples from borderline examples. The generated examples are then input to a boosted neural network.
+
+Lack of information about the proposed algorithm hindered the reproduction of the article. The negative results obtained here are likely to be correlated with the little information given about the steps and the parameters of the employed algorithms.
 
 ## References
