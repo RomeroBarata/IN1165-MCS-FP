@@ -2,6 +2,7 @@
 Final project for **IN1165 Multiple Classifier Systems**.
 
 The goal of this project is to replicate the article:
+
 Thanathamathee, Putthiporn, and Chidchanok Lursinsap. 2013. “Handling Imbalanced Data Sets with Synthetic Boundary Data Generation Using Bootstrap Re-Sampling and Adaboost Techniques.” Pattern Recognition Letters 34 (12). Elsevier: 1339–47.
 
 ## How to run it?
